@@ -2,17 +2,6 @@
   "name": "Node.js + Java Lab",
   "image": "mcr.microsoft.com/devcontainers/universal:2",
   
-  "features": {
-    "ghcr.io/devcontainers/features/node:1": {
-      "version": "20"
-    },
-    "ghcr.io/devcontainers/features/java:1": {
-      "version": "21",
-      "installMaven": true
-    },
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
-  },
-  
   "customizations": {
     "vscode": {
       "extensions": [
@@ -23,6 +12,5 @@
     }
   },
   
-  "forwardPorts": [3000, 8080],
-  "postCreateCommand": "echo '✅ Codespace ready!'"
+  "forwardPorts": [3000, 8080]
 }
