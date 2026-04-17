@@ -1,15 +1,15 @@
-# 🔬 Esercizio B: Fork e gestione container Docker
+# 🔬 Esercizio B: Gestione di container Docker
 
 > **Prerequisito**: completare [Esercizio A](README.md#-esercizio-a-dev-container--configurazione-dellambiente-di-sviluppo) (configurazione Dev Container).
 
 ## Obiettivo
 
-Forkare il repository `cloud-computing-lab`, avviare container Docker con applicazioni
+Fare il fork e clonare il repository `cloud-computing-lab`, avviare container Docker con applicazioni
 Node.js, Java e PHP/MariaDB e testarle dall'interno del Codespace.
 
 ## Competenze
 
-✅ Forkare e clonare un repository GitHub  
+✅ Fare il fork e clonare un repository GitHub  
 ✅ Avviare container con `docker run` e `docker compose`  
 ✅ Testare API REST con il browser e `curl`  
 ✅ Aprire il progetto in GitHub Codespaces  
@@ -62,25 +62,92 @@ cd cloud-computing-lab
 
 ```bash
 cat docker-container/nodejs/server.js
-cat docker-container/nodejs/Dockerfile
 ```
 
 Il container espone un'API Express su porta 3000 con endpoint `/` e `/health`.
 
-### Step 2.2: Build dell'immagine
+### Step 2.2: Esplora il Dockerfile
+
+```bash
+cat docker-container/nodejs/Dockerfile
+```
+
+Il file contiene 7 istruzioni, ognuna crea un **layer** dell'immagine:
+
+```dockerfile
+FROM node:20-alpine
+```
+**Immagine base**: Node.js 20 su Alpine Linux (~5 MB).  
+Alpine è una distribuzione Linux minimale, ideale per container perché riduce le dimensioni
+dell'immagine finale rispetto a Debian/Ubuntu (~50 MB vs ~900 MB).
+
+```dockerfile
+WORKDIR /app
+```
+**Directory di lavoro** dentro il container. Tutti i comandi successivi (`COPY`, `RUN`, `CMD`)
+vengono eseguiti in `/app`. Se la cartella non esiste, Docker la crea automaticamente.
+
+```dockerfile
+COPY package*.json ./
+RUN npm install
+```
+**Strategia di cache a due passi**: prima si copiano solo i file `package.json` e
+`package-lock.json`, poi si installa. In questo modo, se il codice sorgente cambia ma
+le dipendenze rimangono le stesse, Docker riusa il layer di `npm install` dalla cache
+(build molto più veloci).
+
+```dockerfile
+COPY . .
+```
+Copia tutto il resto del codice sorgente nel container (escluso ciò che è in `.dockerignore`).
+Viene fatto **dopo** `npm install` appositamente per sfruttare la cache.
+
+```dockerfile
+EXPOSE 3000
+```
+**Documenta** la porta su cui il container ascolta. Non apre la porta da sola — è solo
+metadata; l'apertura vera avviene con `-p 3000:3000` nel comando `docker run`.
+
+```dockerfile
+CMD ["npm", "start"]
+```
+**Comando di avvio**: eseguito quando il container parte. Usa la forma array (exec form)
+per evitare una shell intermedia — il processo Node.js diventa direttamente il PID 1
+del container, così riceve correttamente i segnali di stop (`SIGTERM`).
+
+---
+
+**Riepilogo del flusso**:
+
+```
+docker build
+  └── FROM node:20-alpine          ← scarica l'immagine base
+  └── WORKDIR /app                 ← crea /app
+  └── COPY package*.json ./        ← copia manifest dipendenze
+  └── RUN npm install              ← installa dipendenze (layer cachato)
+  └── COPY . .                     ← copia il codice sorgente
+  └── EXPOSE 3000                  ← documenta la porta
+        ↓
+      Immagine pronta
+
+docker run -p 3000:3000
+  └── CMD ["npm", "start"]         ← avvia il server Express
+```
+
+### Step 2.3: Build dell'immagine
 
 ```bash
 cd docker-container/nodejs
 docker build -t nodejs-api:1.0 .
 ```
 
-### Step 2.3: Avvio del container
+### Step 2.4: Avvio del container
 
 ```bash
 docker run -d -p 3000:3000 --name nodejs-api nodejs-api:1.0
 ```
 
-### Step 2.4: Test
+### Step 2.5: Test
 
 ```bash
 curl http://localhost:3000/
@@ -92,7 +159,10 @@ curl http://localhost:3000/health
 
 VS Code mostra la notifica **"Port 3000 is available"** → click per aprire nel browser.
 
-### Step 2.5: Cleanup
+### Output atteso nel browser:
+![alt text](assets/image-nodejs-app.png)
+
+### Step 2.6: Cleanup
 
 ```bash
 docker stop nodejs-api && docker rm nodejs-api

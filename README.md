@@ -1,4 +1,4 @@
-# Cloud Computing Lab — Lab guidato: Container nodejs con GitHub Codespaces
+# Cloud Computing Lab guidato — Container nodejs con GitHub Codespaces
 
 Repository per lo studio pratico di **Docker**, **Docker Compose** e applicazioni containerizzate.
 In questo laboratorio vedremo come creare un container Docker per una semplice app Node.js, come avviarlo, testarlo e gestirne il ciclo di vita. Useremo GitHub Codespaces per lavorare in un ambiente di sviluppo già configurato con Docker.
@@ -32,8 +32,6 @@ cloud-computing-lab/
 ---
 
 ## Parte 1: Creare un Dev Container da zero
-
-**cos'è un Dev Container e come si costruisce**.
 
 ### Cos'è un Dev Container?
 
@@ -249,6 +247,7 @@ app.listen(PORT, () => {
 });
 EOF
 ```
+personalizza il messaggio JSON inserendo il tuo nome.
 
 ### Step 3.4: Aggiungi lo script `start` a `package.json`
 
@@ -317,13 +316,11 @@ git commit -m "feat: add nodejs-app standalone"
 
 1. File `devcontainer.json` completo (Step 1.4)
 2. Terminale Codespace: output di `node --version` e `docker --version`
+3. Applicazione Node.js in esecuzione (output di `npm start`)
+4. Risposta JSON di `curl http://localhost:3000/`
 
 ---
 
 ## 🎯 Prossimi passi
 
 - Completa **[Esercizio B](esercizio_b.md)** — Fork del repository e gestione container Docker (Node.js, Java Spring Boot, LAMP)
-- Modifica `docker-container/nodejs/server.js` e fai rebuild per vedere le variazioni
-- Aggiungi un endpoint `/info` alla Spring Boot app che restituisce la versione Java
-- Aggiungi un campo `categoria` alla Kanban Board e filtra per categoria
-
