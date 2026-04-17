@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Container Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f1117; color: #e2e8f0; min-height: 100vh; }
+    header { background: #1e2130; padding: 1.2rem 2rem; border-bottom: 1px solid #2d3348; display: flex; align-items: center; gap: 1rem; }
+    header h1 { font-size: 1.4rem; font-weight: 600; color: #7dd3fc; }
+    header span { font-size: 0.85rem; color: #94a3b8; }
+    #status-dot { width: 10px; height: 10px; border-radius: 50%; background: #22c55e; margin-left: auto; box-shadow: 0 0 6px #22c55e; }
+
+    .grid { display: grid; gap: 1.2rem; padding: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .card { background: #1e2130; border: 1px solid #2d3348; border-radius: 10px; padding: 1.2rem; }
+    .card h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; margin-bottom: 0.8rem; }
+
+    /* Gauge cards */
+    .gauge-row { display: flex; gap: 1.2rem; padding: 1.5rem 1.5rem 0; }
+    .gauge-card { flex: 1; background: #1e2130; border: 1px solid #2d3348; border-radius: 10px; padding: 1.2rem; text-align: center; }
+    .gauge-card h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; margin-bottom: 0.5rem; }
+    .gauge-value { font-size: 2.4rem; font-weight: 700; }
+    .gauge-value.cpu { color: #818cf8; }
+    .gauge-value.mem { color: #34d399; }
+    .gauge-sub { font-size: 0.75rem; color: #64748b; margin-top: 0.2rem; }
+
+    /* Chart canvas */
+    .chart-wrap { position: relative; height: 160px; }
+
+    /* Info table */
+    .info-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    .info-table tr { border-bottom: 1px solid #2d3348; }
+    .info-table tr:last-child { border-bottom: none; }
+    .info-table td { padding: 0.4rem 0.2rem; }
+    .info-table td:first-child { color: #64748b; width: 45%; }
+    .info-table td:last-child { color: #e2e8f0; word-break: break-all; }
+
+    /* Process bar */
+    .proc-row { display: flex; justify-content: space-between; font-size: 0.82rem; margin-bottom: 0.5rem; }
+    .proc-bar-wrap { height: 6px; background: #2d3348; border-radius: 3px; margin-bottom: 0.8rem; }
+    .proc-bar { height: 6px; border-radius: 3px; background: #818cf8; transition: width 0.5s; }
+
+    /* Network */
+    .net-row { display: flex; justify-content: space-around; }
+    .net-item { text-align: center; }
+    .net-item .val { font-size: 1.4rem; font-weight: 700; color: #f59e0b; }
+    .net-item .lbl { font-size: 0.75rem; color: #64748b; margin-top: 0.2rem; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🐳 Container Dashboard</h1>
+  <span id="hostname">—</span>
+  <div id="status-dot"></div>
+</header>
+
+<!-- Gauges -->
+<div class="gauge-row">
+  <div class="gauge-card">
+    <h2>CPU Load</h2>
+    <div class="gauge-value cpu" id="cpu-val">—</div>
+    <div class="gauge-sub" id="cpu-sub">user / system</div>
+  </div>
+  <div class="gauge-card">
+    <h2>Memory</h2>
+    <div class="gauge-value mem" id="mem-val">—</div>
+    <div class="gauge-sub" id="mem-sub">used / total</div>
+  </div>
+  <div class="gauge-card">
+    <h2>Uptime</h2>
+    <div class="gauge-value" style="color:#7dd3fc;font-size:1.6rem;" id="uptime-val">—</div>
+    <div class="gauge-sub">process uptime</div>
+  </div>
+</div>
+
+<!-- Charts + Info -->
+<div class="grid">
+
+  <!-- CPU chart -->
+  <div class="card" style="grid-column: span 2;">
+    <h2>CPU % – ultimi 30 campioni</h2>
+    <div class="chart-wrap"><canvas id="cpuChart"></canvas></div>
+  </div>
+
+  <!-- Memory chart -->
+  <div class="card">
+    <h2>Memoria % – ultimi 30 campioni</h2>
+    <div class="chart-wrap"><canvas id="memChart"></canvas></div>
+  </div>
+
+  <!-- System info -->
+  <div class="card">
+    <h2>Informazioni sistema</h2>
+    <table class="info-table" id="info-table">
+      <tr><td>Hostname</td><td>—</td></tr>
+      <tr><td>OS</td><td>—</td></tr>
+      <tr><td>Kernel</td><td>—</td></tr>
+      <tr><td>CPU</td><td>—</td></tr>
+      <tr><td>CPU cores</td><td>—</td></tr>
+      <tr><td>Node.js</td><td>—</td></tr>
+      <tr><td>PID</td><td>—</td></tr>
+      <tr><td>Avvio</td><td>—</td></tr>
+      <tr><td>NODE_ENV</td><td>—</td></tr>
+    </table>
+  </div>
+
+  <!-- Processes -->
+  <div class="card">
+    <h2>Processi</h2>
+    <div class="proc-row"><span>Totale</span><span id="proc-all">—</span></div>
+    <div class="proc-bar-wrap"><div class="proc-bar" id="proc-run-bar" style="width:0%;background:#818cf8"></div></div>
+    <div class="proc-row"><span>In esecuzione</span><span id="proc-run">—</span></div>
+    <div class="proc-bar-wrap"><div class="proc-bar" id="proc-sleep-bar" style="width:0%;background:#34d399"></div></div>
+    <div class="proc-row"><span>In sleep</span><span id="proc-sleep">—</span></div>
+  </div>
+
+  <!-- Network -->
+  <div class="card">
+    <h2>Rete – <span id="net-iface">—</span></h2>
+    <div class="net-row">
+      <div class="net-item">
+        <div class="val" id="net-rx">—</div>
+        <div class="lbl">↓ RX (bytes/s)</div>
+      </div>
+      <div class="net-item">
+        <div class="val" id="net-tx">—</div>
+        <div class="lbl">↑ TX (bytes/s)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Docker info -->
+  <div class="card">
+    <h2>Docker</h2>
+    <table class="info-table" id="docker-table">
+      <tr><td>Versione</td><td id="d-ver">—</td></tr>
+      <tr><td>Container totali</td><td id="d-tot">—</td></tr>
+      <tr><td>Container running</td><td id="d-run">—</td></tr>
+      <tr><td>Immagini</td><td id="d-img">—</td></tr>
+    </table>
+  </div>
+
+</div>
+
+<script>
+  const MAX = 30;
+
+  // ---- Chart factory ----
+  function makeChart(id, label, color) {
+    const ctx = document.getElementById(id).getContext('2d');
+    return new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: Array(MAX).fill(''),
+        datasets: [{
+          label,
+          data: Array(MAX).fill(null),
+          borderColor: color,
+          backgroundColor: color + '22',
+          borderWidth: 2,
+          pointRadius: 0,
+          fill: true,
+          tension: 0.3,
+        }]
+      },
+      options: {
+        animation: false,
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: { min: 0, max: 100, ticks: { color: '#64748b', callback: v => v + '%' }, grid: { color: '#2d3348' } },
+          x: { ticks: { display: false }, grid: { display: false } }
+        },
+        plugins: { legend: { display: false } }
+      }
+    });
+  }
+
+  const cpuChart = makeChart('cpuChart', 'CPU %', '#818cf8');
+  const memChart = makeChart('memChart', 'RAM %', '#34d399');
+
+  function push(chart, value) {
+    chart.data.datasets[0].data.push(value);
+    chart.data.datasets[0].data.shift();
+    chart.update('none');
+  }
+
+  function fmt(bytes) {
+    if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + ' GB';
+    if (bytes >= 1048576) return (bytes / 1048576).toFixed(0) + ' MB';
+    return (bytes / 1024).toFixed(0) + ' KB';
+  }
+
+  function fmtUptime(s) {
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = Math.floor(s % 60);
+    return `${h}h ${m}m ${sec}s`;
+  }
+
+  // ---- Load static info once ----
+  fetch('/api/info').then(r => r.json()).then(d => {
+    document.getElementById('hostname').textContent = d.container.hostname;
+
+    const rows = document.querySelectorAll('#info-table tr');
+    rows[0].cells[1].textContent = d.container.hostname;
+    rows[1].cells[1].textContent = `${d.os.distro} ${d.os.release}`;
+    rows[2].cells[1].textContent = d.os.kernel;
+    rows[3].cells[1].textContent = `${d.cpu.manufacturer} ${d.cpu.brand}`;
+    rows[4].cells[1].textContent = `${d.cpu.physicalCores} fisici / ${d.cpu.cores} logici`;
+    rows[5].cells[1].textContent = d.container.nodeVersion;
+    rows[6].cells[1].textContent = d.container.pid;
+    rows[7].cells[1].textContent = new Date(d.container.startTime).toLocaleString('it-IT');
+    rows[8].cells[1].textContent = d.container.env.NODE_ENV;
+
+    if (d.docker) {
+      document.getElementById('d-ver').textContent = d.docker.serverVersion;
+      document.getElementById('d-tot').textContent = d.docker.containers;
+      document.getElementById('d-run').textContent = d.docker.containersRunning;
+      document.getElementById('d-img').textContent = d.docker.images;
+    } else {
+      ['d-ver','d-tot','d-run','d-img'].forEach(id => document.getElementById(id).textContent = 'n/a');
+    }
+  }).catch(() => {});
+
+  // ---- Poll metrics every 2s ----
+  function poll() {
+    fetch('/api/metrics').then(r => r.json()).then(d => {
+      // Gauges
+      document.getElementById('cpu-val').textContent = d.cpu.load.toFixed(1) + '%';
+      document.getElementById('cpu-sub').textContent = `user ${d.cpu.user.toFixed(1)}% / sys ${d.cpu.system.toFixed(1)}%`;
+      document.getElementById('mem-val').textContent = d.memory.usedPercent.toFixed(1) + '%';
+      document.getElementById('mem-sub').textContent = `${fmt(d.memory.used)} / ${fmt(d.memory.total)}`;
+      document.getElementById('uptime-val').textContent = fmtUptime(d.uptime);
+
+      // Charts
+      push(cpuChart, d.cpu.load);
+      push(memChart, d.memory.usedPercent);
+
+      // Processes
+      document.getElementById('proc-all').textContent = d.processes.all;
+      document.getElementById('proc-run').textContent = d.processes.running;
+      document.getElementById('proc-sleep').textContent = d.processes.sleeping;
+      const pct = v => Math.min(100, (v / d.processes.all * 100)).toFixed(1) + '%';
+      document.getElementById('proc-run-bar').style.width = pct(d.processes.running);
+      document.getElementById('proc-sleep-bar').style.width = pct(d.processes.sleeping);
+
+      // Network
+      document.getElementById('net-iface').textContent = d.network.iface;
+      document.getElementById('net-rx').textContent = d.network.rxSec.toLocaleString();
+      document.getElementById('net-tx').textContent = d.network.txSec.toLocaleString();
+
+    }).catch(() => {
+      document.getElementById('status-dot').style.background = '#ef4444';
+    });
+  }
+
+  poll();
+  setInterval(poll, 2000);
+</script>
+</body>
+</html>
