@@ -37,8 +37,6 @@ def get_or_create_agent(session_id: str) -> Agent:
                     "Per domande tecniche, fornisci sempre esempi pratici.",
                     "Se non sai qualcosa, dillo chiaramente senza inventare.",
                 ],
-                add_history_to_messages=True,
-                num_history_responses=10,
                 markdown=True,
             )
             print(f"[FbClaw] Nuova sessione creata: {session_id}")
