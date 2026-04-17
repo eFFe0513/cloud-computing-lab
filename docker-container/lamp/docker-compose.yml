@@ -20,7 +20,8 @@ services:
     restart: unless-stopped
 
   webserver:
-    image: php:8.2.5-apache-bullseye
+    build: .
+    image: lamp_webserver:latest
     container_name: lamp_webserver
     depends_on:
       mariadb:
@@ -41,8 +42,7 @@ services:
     networks:
       - lamp_network
     ports:
-      - "80"
-      - "8888"
+      - "8888:80"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/"]
       interval: 30s

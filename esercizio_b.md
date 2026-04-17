@@ -382,7 +382,8 @@ mariadb:
 
 ```yaml
 webserver:
-  image: php:8.2.5-apache-bullseye
+  build: .
+  image: lamp_webserver:latest
   container_name: lamp_webserver
   depends_on:
     mariadb:
@@ -396,15 +397,17 @@ webserver:
   volumes:
     - ./volumes/www/:/var/www/html/
   ports:
-    - "8888"
+    - "8888:80"
 ```
 
 | Chiave | Spiegazione |
 |--------|-------------|
+| `build: .` | Costruisce l'immagine dal `Dockerfile` nella cartella corrente (`.`). Necessario per installare le estensioni PHP (`pdo_mysql`, `mysqli`) che non sono presenti nell'immagine base |
+| `image: lamp_webserver:latest` | Assegna un nome e tag all'immagine costruita. Utile per identificarla con `docker images` ed evitare che Docker Compose la scarichi da Docker Hub |
 | `depends_on: condition: service_healthy` | Aspetta che `mariadb` passi l'healthcheck prima di partire |
 | `environment` | Legge credenziali DB e admin dal file `.env` |
 | `volumes: ./volumes/www/` | Monta la cartella locale come document root Apache — modifiche al codice PHP sono **immediate** senza rebuild |
-| `ports: 8888` | Mappa la porta 8888 dell'host verso la porta 80 del container |
+| `ports: "8888:80"` | Mappa la porta **8888 dell'host** → porta **80 del container** (dove Apache ascolta). Senza il mapping `host:container` Docker assegna una porta casuale |
 
 > 🔒 Le password non sono mai scritte nel `docker-compose.yml`. Docker Compose legge
 > automaticamente il file `.env` nella stessa cartella e sostituisce le variabili `${...}`.
@@ -470,6 +473,9 @@ curl http://localhost:8888/api.php?action=list
 ```
 
 Apri `http://localhost:8888` nel browser per vedere la **Kanban Board** con i task dell'esercitazione.
+
+**Output atteso nel browser:**
+![alt text](assets/image-kanban-board.png)
 
 ### Step 4.5: Operazioni CRUD
 
