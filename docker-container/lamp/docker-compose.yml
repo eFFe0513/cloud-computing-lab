@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  mariadb:
+    image: mariadb:10.11
+    container_name: lamp_mariadb
+    environment:
+      MYSQL_ROOT_PASSWORD: lamp
+      MYSQL_USER: lamp
+      MYSQL_PASSWORD: lamp
+      MYSQL_DATABASE: ""
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - lamp_network
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  webserver:
+    image: php:8.2.5-apache-bullseye
+    container_name: lamp_webserver
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    environment:
+      DB_USERNAME: lamp
+      DB_PASSWORD: lamp
+      DB_HOST: mariadb
+      WEBSERVER_ADMIN_USERNAME: admin
+      WEBSERVER_ADMIN_PASSWORD: admin
+    volumes:
+      # Web content directories
+      - ./www/:/var/www/html/
+      # Apache configuration
+      - ./config/apache/apache2.conf:/etc/apache2/apache2.conf
+      - ./config/apache/sites-available:/etc/apache2/sites-available
+      - ./config/apache/sites-enabled:/etc/apache2/sites-enabled
+    networks:
+      - lamp_network
+    ports:
+      - "80"
+      - "8888"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+# Definiamo una rete personalizzata per isolare i nostri servizi
+# Questo migliora la sicurezza e facilita la comunicazione tra container
+networks:
+  # Rete dedicata nginx proxy per i servizi LAMP e Node.js
+  lamp_network:
+    driver: bridge
+    external: true
+    name: nginx_proxy_network
+
+volumes:
+  mysql_data:
+    driver: local

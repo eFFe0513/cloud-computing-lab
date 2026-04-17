@@ -1,0 +1,204 @@
+# ===========================================================================
+# OWNCLOUD - DOCKER COMPOSE CONFIGURATION
+# ===========================================================================
+# Stack completo OwnCloud con MariaDB e Redis per caching
+# Integrato con nginx-proxy e Let's Encrypt per HTTPS automatico
+#
+# SERVIZI INCLUSI:
+# - OwnCloud Server (file hosting e condivisione)
+# - MariaDB 10.6 (database backend)
+# - Redis 6 (cache per performance)
+#
+# DOMINIO: owncloud.filippobilardo.it
+# CERTIFICATO: Let's Encrypt automatico via nginx-proxy
+# ===========================================================================
+
+# ===========================================================================
+# VOLUMI PERSISTENTI
+# ===========================================================================
+# I volumi sono ora gestiti tramite bind mount su directory locali
+# volumes:
+#   files:
+#     driver: local
+#   mysql:
+#     driver: local
+#   redis:
+#     driver: local
+
+# ===========================================================================
+# SERVIZI
+# ===========================================================================
+services:
+  # =========================================================================
+  # OWNCLOUD SERVER
+  # =========================================================================
+  owncloud:
+    image: owncloud/server:${OWNCLOUD_VERSION}
+    container_name: owncloud_server
+    restart: always
+    
+    # Porta esposta sia internamente che esternamente
+    expose:
+      - "8080"
+    ports:
+      - "9090:8080"
+    
+    depends_on:
+      - mariadb
+      - redis
+    
+    # =========================================================================
+    # VARIABILI D'AMBIENTE - Configurazione OwnCloud
+    # =========================================================================
+    environment:
+      - OWNCLOUD_DOMAIN=${OWNCLOUD_DOMAIN}
+      - OWNCLOUD_TRUSTED_DOMAINS=${OWNCLOUD_TRUSTED_DOMAINS}
+      - OWNCLOUD_DB_TYPE=mysql
+      - OWNCLOUD_DB_NAME=owncloud
+      - OWNCLOUD_DB_USERNAME=owncloud
+      - OWNCLOUD_DB_PASSWORD=owncloud
+      - OWNCLOUD_DB_HOST=owncloud_mariadb
+      - OWNCLOUD_ADMIN_USERNAME=${ADMIN_USERNAME}
+      - OWNCLOUD_ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - OWNCLOUD_MYSQL_UTF8MB4=true
+      - OWNCLOUD_REDIS_ENABLED=true
+      - OWNCLOUD_REDIS_HOST=redis
+      - OWNCLOUD_PROTOCOL=https
+      - OWNCLOUD_OVERWRITEHOST=${OWNCLOUD_DOMAIN}
+      - OWNCLOUD_OVERWRITEPROTOCOL=https
+      - OWNCLOUD_OVERWRITEWEBROOT=/
+      - OWNCLOUD_OVERWRITECONDADDR=^.*$
+    
+    # =========================================================================
+    # ETICHETTE PER NGINX-PROXY + LET'S ENCRYPT
+    # =========================================================================
+    # Configurazione automatica del reverse proxy e certificati SSL
+    labels:
+      # Virtual Host - dominio da utilizzare
+      - "VIRTUAL_HOST=${OWNCLOUD_DOMAIN}"
+      
+      # Virtual Port - porta interna del container
+      - "VIRTUAL_PORT=8080"
+      
+      # Let's Encrypt - email per rinnovo certificati
+      - "LETSENCRYPT_HOST=${OWNCLOUD_DOMAIN}"
+      - "LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}"
+      
+      # Proxy settings - timeout per upload grandi
+      - "com.github.nginx-proxy.nginx.proxy_connect_timeout=600"
+      - "com.github.nginx-proxy.nginx.proxy_send_timeout=600"
+      - "com.github.nginx-proxy.nginx.proxy_read_timeout=600"
+      
+      # Client max body size per upload file grandi
+      - "com.github.nginx-proxy.nginx.client_max_body_size=512m"
+    
+    # =========================================================================
+    # HEALTH CHECK
+    # =========================================================================
+    healthcheck:
+      test: ["CMD", "/usr/bin/healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    
+    # =========================================================================
+    # VOLUMI
+    # =========================================================================
+    volumes:
+      - ./volumes/files:/mnt/data
+    
+    # =========================================================================
+    # RETI
+    # =========================================================================
+    networks:
+      - default
+      - nginx_proxy_network
+
+  # =========================================================================
+  # MARIADB - Database Backend
+  # =========================================================================
+  mariadb:
+    image: mariadb:10.6
+    container_name: owncloud_mariadb
+    restart: always
+    
+    # =========================================================================
+    # VARIABILI D'AMBIENTE - Configurazione Database
+    # =========================================================================
+    environment:
+      - MYSQL_ROOT_PASSWORD=owncloud
+      - MYSQL_USER=owncloud
+      - MYSQL_PASSWORD=owncloud
+      - MYSQL_DATABASE=owncloud
+      - MARIADB_AUTO_UPGRADE=1
+    
+    # Ottimizzazioni per OwnCloud
+    command: 
+      - "--max-allowed-packet=128M"
+      - "--innodb-log-file-size=64M"
+      - "--transaction-isolation=READ-COMMITTED"
+      - "--binlog-format=ROW"
+    
+    # =========================================================================
+    # HEALTH CHECK
+    # =========================================================================
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-u", "root", "--password=owncloud"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    
+    # =========================================================================
+    # VOLUMI
+    # =========================================================================
+    volumes:
+      - ./volumes/mysql:/var/lib/mysql
+    
+    # =========================================================================
+    # RETI
+    # =========================================================================
+    networks:
+      - default
+
+  # =========================================================================
+  # REDIS - Cache per Performance
+  # =========================================================================
+  redis:
+    image: redis:6
+    container_name: owncloud_redis
+    restart: always
+    
+    command: ["--databases", "1"]
+    
+    # =========================================================================
+    # HEALTH CHECK
+    # =========================================================================
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    
+    # =========================================================================
+    # VOLUMI
+    # =========================================================================
+    volumes:
+      - ./volumes/redis:/data
+    
+    # =========================================================================
+    # RETI
+    # =========================================================================
+    networks:
+      - default
+
+# ===========================================================================
+# CONFIGURAZIONE RETI DOCKER
+# ===========================================================================
+networks:
+  # RETE INTERNA - Comunicazione tra servizi dello stack
+  default:
+    driver: bridge
+  
+  # RETE ESTERNA - Condivisa con nginx-proxy per routing HTTPS
+  nginx_proxy_network:
+    external: true

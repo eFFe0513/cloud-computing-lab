@@ -1,0 +1,28 @@
+# Ignorare file sensibili e temporanei
+.env
+*.key
+*.log
+*.sql
+backups/
+*.tar.gz
+
+# Dati MySQL (opzionale, commentare se vuoi versionarli)
+volumes/mysql/*
+!volumes/mysql/.gitkeep
+
+# Node modules
+volumes/nodejs_app/node_modules/
+volumes/nodejs_app/package-lock.json
+
+# Copilot session state (mantenere configurazioni)
+.copilot/session-state/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
