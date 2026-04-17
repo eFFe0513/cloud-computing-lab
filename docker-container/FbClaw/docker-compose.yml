@@ -1,0 +1,18 @@
+services:
+  fbclaw:
+    build: .
+    image: fbclaw:latest
+    container_name: fbclaw
+    env_file: .env
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persistenza dati (es. SQLite per le sessioni)
+      - ./volumes/sqlite-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s

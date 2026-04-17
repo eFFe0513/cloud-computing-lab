@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FbClaw — AI Agent</title>
+  <!-- Markdown rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:          #212121;
+      --surface:     #2f2f2f;
+      --surface2:    #3d3d3d;
+      --text:        #ececec;
+      --text-dim:    #8e8ea0;
+      --accent:      #8b5cf6;
+      --accent-h:    #7c3aed;
+      --user-bg:     #7c3aed;
+      --ai-bg:       #2f2f2f;
+      --border:      #444;
+      --error:       #f87171;
+      --rec:         #ef4444;
+      --success:     #22c55e;
+      --code-bg:     #1a1a2e;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; }
+    .logo-icon {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), #1e40af);
+      display: flex; align-items: center; justify-content: center; font-size: 20px;
+    }
+    .logo-name  { font-size: 1.05rem; font-weight: 700; letter-spacing: .3px; }
+    .logo-sub   { font-size: 0.7rem; color: var(--text-dim); margin-top: 1px; }
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .status-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--success); display: inline-block; flex-shrink: 0;
+    }
+    .session-info { font-size: 0.72rem; color: var(--text-dim); display: flex; align-items: center; gap: 6px; }
+    .btn-new {
+      background: none; border: 1px solid var(--border); color: var(--text-dim);
+      padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 0.72rem;
+      transition: all .2s;
+    }
+    .btn-new:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Chat ── */
+    #chat {
+      flex: 1; overflow-y: auto; padding: 24px 20px;
+      display: flex; flex-direction: column; gap: 18px;
+      scroll-behavior: smooth;
+    }
+    #chat::-webkit-scrollbar { width: 5px; }
+    #chat::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 3px; }
+
+    /* ── Welcome screen ── */
+    .welcome {
+      margin: auto; text-align: center; color: var(--text-dim);
+      padding: 40px 20px; max-width: 440px;
+    }
+    .welcome-icon { font-size: 52px; margin-bottom: 16px; }
+    .welcome h2   { font-size: 1.25rem; color: var(--text); margin-bottom: 10px; }
+    .welcome p    { font-size: 0.88rem; line-height: 1.65; }
+    .welcome-chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 18px; }
+    .chip {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px; padding: 6px 14px; font-size: 0.8rem;
+      cursor: pointer; transition: all .2s; color: var(--text-dim);
+    }
+    .chip:hover { border-color: var(--accent); color: var(--text); }
+
+    /* ── Messages ── */
+    .msg { display: flex; gap: 10px; max-width: 88%; animation: fadeUp .2s ease; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+    .msg.user { align-self: flex-end; flex-direction: row-reverse; }
+    .msg.ai   { align-self: flex-start; }
+
+    .avatar {
+      width: 30px; height: 30px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; flex-shrink: 0; align-self: flex-end;
+    }
+    .msg.user .avatar { background: var(--user-bg); }
+    .msg.ai   .avatar { background: linear-gradient(135deg, var(--accent), #1e40af); }
+
+    .bubble {
+      padding: 10px 14px; border-radius: 18px;
+      line-height: 1.55; font-size: 0.88rem; word-break: break-word;
+    }
+    .msg.user .bubble {
+      background: var(--user-bg); color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+    .msg.ai .bubble {
+      background: var(--ai-bg); border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+    }
+
+    /* Markdown inside AI bubbles */
+    .bubble p         { margin-bottom: 7px; }
+    .bubble p:last-child { margin-bottom: 0; }
+    .bubble ul, .bubble ol { padding-left: 18px; margin: 6px 0; }
+    .bubble li        { margin-bottom: 3px; }
+    .bubble strong    { color: #c4b5fd; }
+    .bubble code      { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; font-size: 0.83em; font-family: 'Fira Code', monospace; }
+    .bubble pre       { background: var(--code-bg); padding: 10px 12px; border-radius: 8px; overflow-x: auto; margin: 8px 0; }
+    .bubble pre code  { background: none; padding: 0; }
+    .bubble blockquote{ border-left: 3px solid var(--accent); padding-left: 10px; color: var(--text-dim); margin: 6px 0; }
+    .bubble h1, .bubble h2, .bubble h3 { color: var(--text); margin: 8px 0 4px; }
+
+    .voice-tag { font-size: 0.72rem; color: var(--text-dim); margin-bottom: 5px; }
+
+    /* Typing indicator */
+    .typing .bubble { padding: 13px 16px; }
+    .dots         { display: flex; gap: 4px; }
+    .dot          { width: 7px; height: 7px; border-radius: 50%; background: var(--text-dim); animation: bounce 1.2s infinite; }
+    .dot:nth-child(2) { animation-delay: .2s; }
+    .dot:nth-child(3) { animation-delay: .4s; }
+    @keyframes bounce { 0%,60%,100% { transform: translateY(0); } 30% { transform: translateY(-6px); } }
+
+    /* ── Input area ── */
+    #input-area {
+      padding: 10px 20px 14px; border-top: 1px solid var(--border);
+      background: var(--surface); flex-shrink: 0;
+    }
+    #rec-bar {
+      font-size: 0.72rem; color: var(--rec); text-align: center;
+      height: 16px; margin-bottom: 6px;
+    }
+    .input-box {
+      display: flex; align-items: flex-end; gap: 6px;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 14px; padding: 7px 8px 7px 14px;
+      transition: border-color .2s;
+    }
+    .input-box:focus-within { border-color: var(--accent); }
+
+    textarea {
+      flex: 1; background: none; border: none; outline: none;
+      color: var(--text); font-size: 0.88rem; resize: none;
+      min-height: 22px; max-height: 160px; line-height: 1.5;
+      font-family: inherit;
+    }
+    textarea::placeholder { color: var(--text-dim); }
+
+    .btn-icon {
+      width: 34px; height: 34px; border-radius: 9px; border: none;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-size: 15px; flex-shrink: 0; transition: all .2s;
+    }
+    #btn-send { background: var(--accent); color: #fff; }
+    #btn-send:hover:not(:disabled) { background: var(--accent-h); }
+    #btn-send:disabled { opacity: .35; cursor: default; }
+    #btn-record { background: var(--surface2); color: var(--text); }
+    #btn-record:hover { background: var(--border); }
+    #btn-record.recording { background: var(--rec); color: #fff; animation: recPulse 1s infinite; }
+    @keyframes recPulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,.45); }
+      50%      { box-shadow: 0 0 0 9px rgba(239,68,68,0); }
+    }
+
+    .hint { font-size: 0.68rem; color: var(--text-dim); text-align: center; margin-top: 6px; }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">🤖</div>
+    <div>
+      <div class="logo-name">FbClaw</div>
+      <div class="logo-sub">Mistral LLM · Groq Whisper · Agno</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="session-info">
+      <span class="status-dot" id="status-dot"></span>
+      <span id="session-label">Sessione: —</span>
+    </div>
+    <button class="btn-new" onclick="newChat()">+ Nuova chat</button>
+  </div>
+</header>
+
+<!-- ── Chat ── -->
+<div id="chat">
+  <div class="welcome" id="welcome">
+    <div class="welcome-icon">🤖</div>
+    <h2>Ciao! Sono FbClaw</h2>
+    <p>Puoi scrivermi un messaggio di testo oppure registrare una nota vocale con il pulsante 🎙️ — la trascrivo automaticamente con Groq Whisper.</p>
+    <div class="welcome-chips">
+      <span class="chip" onclick="quickSend('Ciao! Come funzioni?')">👋 Come funzioni?</span>
+      <span class="chip" onclick="quickSend('Spiegami cosa sono i microservizi')">🧩 Microservizi</span>
+      <span class="chip" onclick="quickSend('Scrivi un esempio di Dockerfile')">🐳 Dockerfile</span>
+      <span class="chip" onclick="quickSend('Che modello AI usi?')">🧠 Che modello sei?</span>
+    </div>
+  </div>
+</div>
+
+<!-- ── Input ── -->
+<div id="input-area">
+  <div id="rec-bar"></div>
+  <div class="input-box">
+    <textarea id="msg-input" placeholder="Scrivi un messaggio… (Invio per inviare, Shift+Invio per andare a capo)" rows="1"></textarea>
+    <button class="btn-icon" id="btn-record" title="Registra nota vocale" onclick="toggleRecord()">🎙️</button>
+    <button class="btn-icon" id="btn-send" title="Invia messaggio" onclick="handleSend()">↑</button>
+  </div>
+  <div class="hint">Shift+Invio per andare a capo · 🎙️ per nota vocale</div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

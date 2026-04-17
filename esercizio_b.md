@@ -363,11 +363,12 @@ mariadb:
     MYSQL_DATABASE: ${MYSQL_DATABASE}
   volumes:
       - ./volumes/mysql:/var/lib/mysql
-  healthcheck:
-    test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
-    interval: 30s
-    retries: 3
-    start_period: 40s
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 ```
 
 | Chiave | Spiegazione |
@@ -376,7 +377,7 @@ mariadb:
 | `environment` | Legge le credenziali dal file `.env` — nessuna password nel codice |
 | `volumes: ./volumes/mysql` | Volume Docker persistente: i dati sopravvivono a `docker compose down` |
 | `healthcheck` | Verifica che MariaDB sia pronto prima di avviare il webserver |
-| `start_period: 40s` | Attende 40s prima di iniziare i check (MariaDB è lento al primo avvio) |
+| `start_period: 30s` | Attende 30s prima di iniziare i check (MariaDB è lento al primo avvio) |
 
 #### Servizio `webserver`
 
@@ -492,75 +493,14 @@ Testa la Kanban Board nell'interfaccia grafica:
 
 ```bash
 docker compose down
-# I dati rimangono nel volume mysql_data
-# Per eliminare anche i dati: docker compose down -v
+# I dati MariaDB rimangono nella cartella ./volumes/mysql/
+# Per eliminare anche i dati (reset completo):
+rm -rf ./volumes/mysql/*
 ```
 
----
-
-## Parte 5: Aprire in GitHub Codespaces
-
-### Step 5.1: Crea il Codespace
-
-1. Vai sul tuo fork GitHub
-2. Click su **Code** (verde) → tab **Codespaces**
-3. Click **Create codespace on main**
-4. Attendi 1–2 minuti → VS Code si apre nel browser
-
-### Step 5.2: Verifica installazioni
-
-```bash
-node --version    # v24.x
-docker --version  # Docker 27.x (Docker-in-Docker)
-```
-
-### Step 5.3: Crea la rete Docker condivisa
-
-```bash
-docker network create nginx_proxy_network
-# Necessaria per lo stack LAMP
-```
-
-### Step 5.4: Testa tutti i container nel Codespace
-
-```bash
-# Node.js
-cd docker-container/nodejs
-docker build -t nodejs-api:1.0 . && docker run -d -p 3000:3000 --name nodejs-api nodejs-api:1.0
-curl http://localhost:3000/
-
-# Java Spring
-cd ../java-spring
-docker build -t spring-dashboard:1.0 . && docker run -d -p 8080:8080 --name spring-dashboard spring-dashboard:1.0
-# attendi ~15s
-curl http://localhost:8080/
-
-# LAMP
-cd ../lamp
-cp .env.example .env
-docker compose up -d
-curl http://localhost:8888/api.php?action=ping
-```
-
-VS Code mostra le notifiche per ogni porta aperta → click per aprire nel browser integrato.
-
----
-
-## Parte 6: App Node.js standalone (senza Docker)
-
-Il repository include anche `nodejs-app/` — una versione dell'app Node.js che gira
-direttamente nell'ambiente Codespace, **senza Docker**.
-
-```bash
-cd nodejs-app
-npm install
-npm start
-# Output: ✅ Node.js app running on port 3000
-```
-
-Utile per confrontare:
-- **Con Docker** (`docker-container/nodejs/`): app isolata, riproducibile ovunque
-- **Senza Docker** (`nodejs-app/`): avvio diretto, dipende dall'ambiente host
+> ⚠️ `docker compose down -v` **non** elimina i dati perché usiamo un **bind mount**
+> (`./volumes/mysql`), non un named volume. Per resettare il database bisogna
+> cancellare manualmente il contenuto della cartella.
 
 ---
 
