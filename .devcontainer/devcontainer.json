@@ -1,9 +1,6 @@
 {
   "name": "Node.js Lab",
   "image": "mcr.microsoft.com/devcontainers/javascript-node:24",
-  "features": {
-    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
-  },
 
   "postCreateCommand": "apt-get update && apt-get install -y nano",
 
