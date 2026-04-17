@@ -60,5 +60,11 @@ networks:
     name: nginx_proxy_network
 
 volumes:
+  # Volume per i dati persistenti di MySQL/MariaDB
+  # .volumes/mysql_data:/var/lib/mysql
   mysql_data:
     driver: local
+    name: mysql_data_volume
+    
+
+  
