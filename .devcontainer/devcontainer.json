@@ -3,10 +3,11 @@
   "image": "mcr.microsoft.com/devcontainers/base:debian",
 
   "features": {
-    "ghcr.io/devcontainers/features/node:1": { "version": "24" }
+    "ghcr.io/devcontainers/features/node:1": { "version": "24" },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
   },
 
-  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y docker.io && sudo usermod -aG docker ${USER} && newgrp docker",
+  "postCreateCommand": "docker --version && node --version",
 
   "customizations": {
     "vscode": {

@@ -197,8 +197,89 @@ docker system prune -a
 
 ---
 
+---
+
+## Esempio: Java Spring Boot Container Dashboard
+
+L'applicazione nella cartella `java-spring/` è una **dashboard web a tema terminale** (sfondo verde-su-nero, stile hacker) che mostra metriche JVM e di sistema in tempo reale grazie alla libreria [OSHI](https://github.com/oshi/oshi).
+
+### Funzionalità esclusive rispetto alla dashboard Node.js
+
+| Metrica | Descrizione |
+|---------|-------------|
+| **JVM Heap %** | Percentuale di heap Java usata (gauge + grafico storico) |
+| **Non-Heap** | Memoria metaspace/code-cache della JVM |
+| **GC Collectors** | Nome dei Garbage Collector attivi (G1, ZGC…) |
+| **GC Collections** | Numero totale di collezioni GC e tempo cumulativo |
+| **Thread peak** | Massimo thread live registrato dalla JVM |
+| **Thread daemon** | Thread di servizio attivi |
+| **Thread totali avviati** | Contatore storico |
+| **Load avg** | Media del carico di sistema a 1 / 5 / 15 minuti |
+
+### Dockerfile spiegato (multi-stage build)
+
+```dockerfile
+# Stage 1 – build: Maven + JDK compilano l'applicazione
+FROM maven:3.9-eclipse-temurin-21 AS builder
+WORKDIR /app
+COPY pom.xml .
+RUN mvn dependency:go-offline          # scarica le dipendenze una volta sola
+COPY src ./src
+RUN mvn package -DskipTests            # produce target/*.jar
+
+# Stage 2 – runtime: solo JRE Alpine (immagine finale ~180 MB vs ~600 MB con JDK)
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+COPY --from=builder /app/target/*.jar app.jar
+EXPOSE 8080
+CMD ["java", "-jar", "app.jar"]
+```
+
+> **Multi-stage build**: il codice sorgente e Maven rimangono nello stage di build; l'immagine finale contiene solo il JAR e il JRE, riducendo drasticamente la dimensione e la superficie d'attacco.
+
+### Endpoint API
+
+| Endpoint           | Descrizione |
+|--------------------|-------------|
+| `GET /`            | Dashboard HTML terminale con ApexCharts |
+| `GET /api/info`    | Info statiche: hostname, Java/JVM, CPU, OS, GC collectors |
+| `GET /api/metrics` | Metriche live: CPU load, Heap%, RAM, thread, GC, rete, disco |
+| `GET /actuator/health` | Health check Spring Actuator |
+
+### Avvio rapido
+
+```bash
+cd docker-container/java-spring
+
+# Build (richiede ~3 min la prima volta per scaricare le dipendenze Maven)
+docker build -t spring-dashboard:1.0 .
+
+# Avvio
+docker run -d -p 8080:8080 --name spring-dashboard spring-dashboard:1.0
+
+# Log
+docker logs -f spring-dashboard
+```
+
+Apri il browser su **http://localhost:8080** per vedere la dashboard.
+
+### Differenze visive rispetto alla dashboard Node.js
+
+| | Node.js Dashboard | Spring Boot Dashboard |
+|---|---|---|
+| **Tema** | Dark blue/purple | Terminal verde (stile hacker) |
+| **Libreria grafici** | Chart.js 4 | ApexCharts 3 |
+| **Metriche JVM** | No | Sì (Heap, GC, Threads) |
+| **Porta default** | 3000 | 8080 |
+| **Aggiornamento** | ogni 2 s | ogni 3 s |
+
+---
+
 ## Riferimenti
 
 - [Documentazione ufficiale Docker](https://docs.docker.com/)
 - [Docker Hub – node](https://hub.docker.com/_/node)
+- [Docker Hub – eclipse-temurin](https://hub.docker.com/_/eclipse-temurin)
+- [Spring Boot](https://spring.io/projects/spring-boot)
+- [OSHI – OS & Hardware Info for Java](https://github.com/oshi/oshi)
 - [Best practices per Dockerfile](https://docs.docker.com/develop/develop-images/dockerfile_best-practices/)

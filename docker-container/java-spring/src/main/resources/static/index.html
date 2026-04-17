@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>☕ Spring Boot Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts@3/dist/apexcharts.min.js"></script>
+  <style>
+    :root {
+      --bg:         #020b02;
+      --card:       #060f06;
+      --border:     #0d280d;
+      --green:      #00e040;
+      --green-dim:  #00882a;
+      --green-dark: #004015;
+      --yellow:     #c8ff00;
+      --orange:     #ff9500;
+      --red:        #ff3333;
+      --text:       #c0eec0;
+      --muted:      #4a724a;
+      --font:       'Share Tech Mono', 'Courier New', monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; }
+
+    /* ---- HEADER ---- */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 0.9rem 1.6rem;
+      display: flex; align-items: center; flex-wrap: wrap; gap: 0.8rem;
+      background: #030e03;
+    }
+    .logo { font-size: 1.35rem; color: var(--green); letter-spacing: 0.04em; }
+    .logo span { color: var(--yellow); }
+    .hdr-info { font-size: 0.78rem; color: var(--muted); margin-left: auto; }
+    .hdr-info strong { color: var(--text); }
+    #conn-indicator {
+      width: 9px; height: 9px; border-radius: 50%;
+      background: var(--green); box-shadow: 0 0 8px var(--green);
+      transition: background 0.3s;
+    }
+    #conn-indicator.off { background: var(--red); box-shadow: 0 0 8px var(--red); }
+
+    /* ---- GRID ---- */
+    .page { padding: 1.2rem 1.4rem; display: flex; flex-direction: column; gap: 1.2rem; }
+
+    /* Gauge row */
+    .gauge-row { display: grid; gap: 1rem; grid-template-columns: repeat(4, 1fr); }
+    @media (max-width: 900px) { .gauge-row { grid-template-columns: repeat(2, 1fr); } }
+
+    .gauge {
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1rem;
+      background: var(--card);
+      position: relative;
+      overflow: hidden;
+    }
+    .gauge::before {
+      content: '';
+      position: absolute; top: 0; left: 0;
+      width: 3px; height: 100%;
+      background: var(--green);
+    }
+    .gauge.heap::before  { background: var(--yellow); }
+    .gauge.ram::before   { background: #00cfff; }
+    .gauge.thr::before   { background: var(--orange); }
+
+    .gauge-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.3rem; }
+    .gauge-value { font-size: 2.2rem; color: var(--green); line-height: 1; }
+    .gauge.heap  .gauge-value { color: var(--yellow); }
+    .gauge.ram   .gauge-value { color: #00cfff; }
+    .gauge.thr   .gauge-value { color: var(--orange); }
+    .gauge-sub   { font-size: 0.72rem; color: var(--muted); margin-top: 0.35rem; }
+
+    /* Progress bar inside gauge */
+    .gauge-bar-wrap { height: 4px; background: var(--green-dark); border-radius: 2px; margin-top: 0.5rem; }
+    .gauge-bar { height: 4px; border-radius: 2px; background: var(--green); transition: width 0.6s; }
+    .gauge.heap .gauge-bar { background: var(--yellow); }
+    .gauge.ram  .gauge-bar { background: #00cfff; }
+    .gauge.thr  .gauge-bar { background: var(--orange); }
+
+    /* Chart row */
+    .chart-row { display: grid; gap: 1rem; grid-template-columns: 1fr 1fr; }
+    @media (max-width: 750px) { .chart-row { grid-template-columns: 1fr; } }
+
+    /* Bottom row */
+    .bottom-row { display: grid; gap: 1rem; grid-template-columns: repeat(3, 1fr); }
+    @media (max-width: 900px) { .bottom-row { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 600px) { .bottom-row { grid-template-columns: 1fr; } }
+
+    /* Card */
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--card);
+      padding: 1rem 1.1rem;
+    }
+    .card-title {
+      font-size: 0.72rem; text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--muted);
+      margin-bottom: 0.8rem; border-bottom: 1px solid var(--border);
+      padding-bottom: 0.5rem;
+    }
+    .card-title span { color: var(--green); }
+
+    /* KV table */
+    .kv { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    .kv tr { border-bottom: 1px solid var(--border); }
+    .kv tr:last-child { border-bottom: none; }
+    .kv td { padding: 0.35rem 0.2rem; }
+    .kv td:first-child { color: var(--muted); width: 46%; }
+    .kv td:last-child { color: var(--text); word-break: break-all; }
+    .kv td .hi { color: var(--green); }
+    .kv td .warn { color: var(--yellow); }
+    .kv td .err  { color: var(--red); }
+
+    /* GC pill */
+    .gc-pill {
+      display: inline-block; background: var(--green-dark);
+      color: var(--green); border-radius: 3px;
+      padding: 0.1rem 0.4rem; font-size: 0.75rem; margin: 0.1rem;
+    }
+
+    /* Network/Disk rate cards */
+    .rate-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.3rem; }
+    .rate-item { text-align: center; border: 1px solid var(--border); border-radius: 3px; padding: 0.5rem 0.3rem; }
+    .rate-item .rv { font-size: 1.3rem; color: var(--yellow); }
+    .rate-item .rl { font-size: 0.68rem; color: var(--muted); margin-top: 0.15rem; }
+
+    /* Uptime badge */
+    #uptime-badge { font-size: 0.82rem; color: var(--green); }
+
+    /* Scrollable process area */
+    .proc-area { font-size: 0.78rem; }
+    .proc-line { display: flex; justify-content: space-between; padding: 0.25rem 0; border-bottom: 1px solid var(--border); }
+    .proc-line:last-child { border-bottom: none; }
+    .proc-line span:last-child { color: var(--yellow); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">☕ <span>SPRING BOOT</span> DASHBOARD</div>
+  <div id="uptime-badge">uptime: —</div>
+  <div class="hdr-info">
+    <strong id="hdr-host">—</strong> &nbsp;|&nbsp;
+    Java <strong id="hdr-java">—</strong> &nbsp;|&nbsp;
+    PID <strong id="hdr-pid">—</strong>
+  </div>
+  <div id="conn-indicator"></div>
+</header>
+
+<div class="page">
+
+  <!-- Gauges -->
+  <div class="gauge-row">
+    <div class="gauge">
+      <div class="gauge-label">CPU Load</div>
+      <div class="gauge-value" id="g-cpu">—</div>
+      <div class="gauge-sub" id="g-cpu-avg">avg1m —</div>
+      <div class="gauge-bar-wrap"><div class="gauge-bar" id="gb-cpu" style="width:0%"></div></div>
+    </div>
+    <div class="gauge heap">
+      <div class="gauge-label">JVM Heap</div>
+      <div class="gauge-value" id="g-heap">—</div>
+      <div class="gauge-sub" id="g-heap-sub">— / —</div>
+      <div class="gauge-bar-wrap"><div class="gauge-bar" id="gb-heap" style="width:0%"></div></div>
+    </div>
+    <div class="gauge ram">
+      <div class="gauge-label">System RAM</div>
+      <div class="gauge-value" id="g-ram">—</div>
+      <div class="gauge-sub" id="g-ram-sub">— / —</div>
+      <div class="gauge-bar-wrap"><div class="gauge-bar" id="gb-ram" style="width:0%"></div></div>
+    </div>
+    <div class="gauge thr">
+      <div class="gauge-label">Threads</div>
+      <div class="gauge-value" id="g-thr">—</div>
+      <div class="gauge-sub" id="g-thr-sub">— daemon / peak —</div>
+      <div class="gauge-bar-wrap"><div class="gauge-bar" id="gb-thr" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="chart-row">
+    <div class="card">
+      <div class="card-title"><span>▶</span> CPU % — ultimi 40 campioni</div>
+      <div id="cpu-chart"></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span>▶</span> JVM Heap % — ultimi 40 campioni</div>
+      <div id="heap-chart"></div>
+    </div>
+  </div>
+
+  <!-- Bottom info -->
+  <div class="bottom-row">
+
+    <!-- Container / JVM info -->
+    <div class="card">
+      <div class="card-title"><span>►</span> JVM Info</div>
+      <table class="kv" id="jvm-table">
+        <tr><td>Hostname</td><td id="i-host">—</td></tr>
+        <tr><td>Java</td><td id="i-java">—</td></tr>
+        <tr><td>JVM</td><td id="i-jvm">—</td></tr>
+        <tr><td>Vendor</td><td id="i-vendor">—</td></tr>
+        <tr><td>PID</td><td id="i-pid">—</td></tr>
+        <tr><td>Avvio</td><td id="i-start">—</td></tr>
+        <tr><td>Porta</td><td id="i-port">—</td></tr>
+        <tr><td>Profile</td><td id="i-profile">—</td></tr>
+        <tr><td>OS family</td><td id="i-os">—</td></tr>
+        <tr><td>OS version</td><td id="i-osver">—</td></tr>
+        <tr><td>CPU</td><td id="i-cpu">—</td></tr>
+        <tr><td>GC collectors</td><td id="i-gc">—</td></tr>
+      </table>
+    </div>
+
+    <!-- JVM Memory detail + GC -->
+    <div class="card">
+      <div class="card-title"><span>►</span> JVM Memory &amp; GC</div>
+      <table class="kv">
+        <tr><td>Heap usata</td><td id="m-heap-used">—</td></tr>
+        <tr><td>Heap committed</td><td id="m-heap-com">—</td></tr>
+        <tr><td>Heap max</td><td id="m-heap-max">—</td></tr>
+        <tr><td>Non-Heap usata</td><td id="m-nonheap">—</td></tr>
+        <tr><td>Non-Heap commit.</td><td id="m-nonheap-com">—</td></tr>
+        <tr><td>Sys RAM usata</td><td id="m-sysram">—</td></tr>
+        <tr><td>Sys RAM totale</td><td id="m-sysram-tot">—</td></tr>
+      </table>
+      <div class="card-title" style="margin-top:0.9rem"><span>►</span> Garbage Collection</div>
+      <table class="kv">
+        <tr><td>Collezioni totali</td><td id="gc-count" class="hi">—</td></tr>
+        <tr><td>Tempo totale GC</td><td id="gc-time">—</td></tr>
+      </table>
+    </div>
+
+    <!-- Threads + Processes -->
+    <div class="card">
+      <div class="card-title"><span>►</span> Thread &amp; Processi</div>
+      <div class="proc-area">
+        <div class="proc-line"><span>Thread live</span><span id="p-thr">—</span></div>
+        <div class="proc-line"><span>Thread daemon</span><span id="p-daemon">—</span></div>
+        <div class="proc-line"><span>Thread peak</span><span id="p-peak">—</span></div>
+        <div class="proc-line"><span>Thread avviati (tot.)</span><span id="p-total">—</span></div>
+        <div class="proc-line"><span>Processi OS</span><span id="p-procs">—</span></div>
+        <div class="proc-line"><span>Thread OS</span><span id="p-osthreads">—</span></div>
+      </div>
+      <div class="card-title" style="margin-top:0.9rem"><span>►</span> Rete — <span id="net-name">—</span></div>
+      <div class="rate-grid">
+        <div class="rate-item"><div class="rv" id="net-rx">—</div><div class="rl">↓ RX bytes/s</div></div>
+        <div class="rate-item"><div class="rv" id="net-tx">—</div><div class="rl">↑ TX bytes/s</div></div>
+        <div class="rate-item"><div class="rv" id="disk-r">—</div><div class="rl">Disk R bytes/s</div></div>
+        <div class="rate-item"><div class="rv" id="disk-w">—</div><div class="rl">Disk W bytes/s</div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // ---- Utilities ----
+  function fmt(b) {
+    if (b == null) return '—';
+    if (b >= 1073741824) return (b / 1073741824).toFixed(2) + ' GB';
+    if (b >= 1048576)    return (b / 1048576).toFixed(1) + ' MB';
+    if (b >= 1024)       return (b / 1024).toFixed(0) + ' KB';
+    return b + ' B';
+  }
+  function fmtUptime(s) {
+    const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600),
+          m = Math.floor((s % 3600) / 60), sec = Math.floor(s % 60);
+    return d > 0 ? `${d}d ${h}h ${m}m` : `${h}h ${m}m ${sec}s`;
+  }
+  function clamp(v, lo=0, hi=100) { return Math.min(hi, Math.max(lo, v || 0)); }
+
+  // ---- ApexCharts config factory ----
+  const MAX_PTS = 40;
+  function makeApex(elId, label, color) {
+    const opts = {
+      chart: { type: 'area', height: 150, background: 'transparent',
+               animations: { enabled: false }, toolbar: { show: false },
+               sparkline: { enabled: false } },
+      series: [{ name: label, data: Array(MAX_PTS).fill(null) }],
+      stroke: { curve: 'smooth', width: 2 },
+      fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05 } },
+      colors: [color],
+      xaxis: { type: 'category', labels: { show: false }, axisBorder: { show: false }, axisTicks: { show: false },
+               categories: Array(MAX_PTS).fill('') },
+      yaxis: { min: 0, max: 100, labels: { style: { colors: '#4a724a', fontFamily: 'Share Tech Mono, monospace', fontSize: '11px' },
+               formatter: v => v.toFixed(0) + '%' } },
+      grid: { borderColor: '#0d280d', strokeDashArray: 3,
+              xaxis: { lines: { show: false } } },
+      tooltip: { theme: 'dark', style: { fontFamily: 'Share Tech Mono, monospace' },
+                 y: { formatter: v => (v || 0).toFixed(2) + '%' } },
+      theme: { mode: 'dark' },
+      dataLabels: { enabled: false },
+    };
+    const chart = new ApexCharts(document.getElementById(elId), opts);
+    chart.render();
+    return chart;
+  }
+
+  const cpuChart  = makeApex('cpu-chart',  'CPU %',  '#00e040');
+  const heapChart = makeApex('heap-chart', 'Heap %', '#c8ff00');
+
+  function pushChart(chart, val) {
+    chart.appendData([{ data: [val == null ? null : parseFloat(val.toFixed(2))] }]);
+    const s = chart.w.globals.series[0];
+    if (s.length > MAX_PTS) {
+      const trimmed = s.slice(s.length - MAX_PTS);
+      chart.updateSeries([{ data: trimmed }], false);
+    }
+  }
+
+  // ---- Fetch static info once ----
+  fetch('/api/info').then(r => r.json()).then(d => {
+    const c = d.container;
+    document.getElementById('hdr-host').textContent = c.hostname;
+    document.getElementById('hdr-java').textContent = c.javaVersion;
+    document.getElementById('hdr-pid').textContent  = c.pid;
+
+    document.getElementById('i-host').textContent    = c.hostname;
+    document.getElementById('i-java').textContent    = c.javaVersion;
+    document.getElementById('i-jvm').textContent     = c.jvmName;
+    document.getElementById('i-vendor').textContent  = c.javaVendor;
+    document.getElementById('i-pid').textContent     = c.pid;
+    document.getElementById('i-start').textContent   = c.startTime;
+    document.getElementById('i-port').textContent    = c.port;
+    document.getElementById('i-profile').textContent = c.springProfile;
+    document.getElementById('i-os').textContent      = d.os.family;
+    document.getElementById('i-osver').textContent   = d.os.version;
+    document.getElementById('i-cpu').textContent     = `${d.cpu.name} (${d.cpu.physicalCores}c/${d.cpu.logicalCores}t)`;
+
+    const gcEl = document.getElementById('i-gc');
+    gcEl.innerHTML = '';
+    (d.jvm.gcCollectors || []).forEach(name => {
+      const span = document.createElement('span');
+      span.className = 'gc-pill'; span.textContent = name;
+      gcEl.appendChild(span);
+    });
+
+    document.getElementById('m-sysram-tot').textContent = fmt(d.memory.total);
+    document.getElementById('m-heap-max').textContent   = fmt(d.jvm.heapMax);
+  }).catch(() => {});
+
+  // ---- Previous values for delta rate calc ----
+  let prevNet  = null, prevDisk = null, prevTs = null;
+
+  // ---- Poll metrics every 3s ----
+  function poll() {
+    fetch('/api/metrics').then(r => r.json()).then(d => {
+      document.getElementById('conn-indicator').classList.remove('off');
+      const now = d.timestamp;
+
+      // Uptime
+      document.getElementById('uptime-badge').textContent = 'uptime: ' + fmtUptime(d.uptime);
+
+      // CPU gauge
+      const cpuLoad = d.cpu.load;
+      document.getElementById('g-cpu').textContent     = cpuLoad.toFixed(1) + '%';
+      document.getElementById('g-cpu-avg').textContent = d.cpu.loadAvg1 != null
+        ? `avg1m ${d.cpu.loadAvg1.toFixed(2)}`  : 'avg1m n/a';
+      document.getElementById('gb-cpu').style.width    = clamp(cpuLoad) + '%';
+      pushChart(cpuChart, cpuLoad);
+
+      // Heap gauge
+      const hp = d.jvmMemory.heapPercent;
+      document.getElementById('g-heap').textContent    = hp.toFixed(1) + '%';
+      document.getElementById('g-heap-sub').textContent =
+        fmt(d.jvmMemory.heapUsed) + ' / ' + fmt(d.jvmMemory.heapMax);
+      document.getElementById('gb-heap').style.width   = clamp(hp) + '%';
+      pushChart(heapChart, hp);
+
+      // RAM gauge
+      const rp = d.memory.usedPercent;
+      document.getElementById('g-ram').textContent     = rp.toFixed(1) + '%';
+      document.getElementById('g-ram-sub').textContent =
+        fmt(d.memory.used) + ' / ' + fmt(d.memory.total);
+      document.getElementById('gb-ram').style.width    = clamp(rp) + '%';
+
+      // Threads gauge
+      const thr = d.threads.count;
+      const peak = d.threads.peak;
+      document.getElementById('g-thr').textContent     = thr;
+      document.getElementById('g-thr-sub').textContent =
+        `${d.threads.daemon} daemon / peak ${peak}`;
+      document.getElementById('gb-thr').style.width    = Math.min(100, thr / peak * 100).toFixed(1) + '%';
+
+      // JVM memory detail
+      document.getElementById('m-heap-used').textContent   = fmt(d.jvmMemory.heapUsed);
+      document.getElementById('m-heap-com').textContent    = fmt(d.jvmMemory.heapCommitted);
+      document.getElementById('m-nonheap').textContent     = fmt(d.jvmMemory.nonHeapUsed);
+      document.getElementById('m-nonheap-com').textContent = fmt(d.jvmMemory.nonHeapCommitted);
+      document.getElementById('m-sysram').textContent      = fmt(d.memory.used);
+
+      // GC
+      document.getElementById('gc-count').textContent = d.gc.collections;
+      document.getElementById('gc-time').textContent  = d.gc.timeMs + ' ms';
+
+      // Threads
+      document.getElementById('p-thr').textContent      = d.threads.count;
+      document.getElementById('p-daemon').textContent   = d.threads.daemon;
+      document.getElementById('p-peak').textContent     = d.threads.peak;
+      document.getElementById('p-total').textContent    = d.threads.totalStarted;
+      document.getElementById('p-procs').textContent    = d.processes.total;
+      document.getElementById('p-osthreads').textContent = d.processes.threads;
+
+      // Network rate
+      if (d.network) {
+        document.getElementById('net-name').textContent = d.network.name;
+        if (prevNet && prevTs) {
+          const dt = (now - prevTs) / 1000;
+          document.getElementById('net-rx').textContent =
+            fmt(Math.round((d.network.rxBytes - prevNet.rxBytes) / dt));
+          document.getElementById('net-tx').textContent =
+            fmt(Math.round((d.network.txBytes - prevNet.txBytes) / dt));
+        }
+        prevNet = d.network;
+      }
+
+      // Disk rate
+      if (d.disk) {
+        if (prevDisk && prevTs) {
+          const dt = (now - prevTs) / 1000;
+          document.getElementById('disk-r').textContent =
+            fmt(Math.round((d.disk.readBytes - prevDisk.readBytes) / dt));
+          document.getElementById('disk-w').textContent =
+            fmt(Math.round((d.disk.writeBytes - prevDisk.writeBytes) / dt));
+        }
+        prevDisk = d.disk;
+      }
+
+      prevTs = now;
+    }).catch(() => {
+      document.getElementById('conn-indicator').classList.add('off');
+    });
+  }
+
+  poll();
+  setInterval(poll, 3000);
+</script>
+</body>
+</html>
