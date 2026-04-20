@@ -568,3 +568,11 @@ Le build successive usano la cache Docker e impiegano < 30 secondi.
 docker logs spring-dashboard -f
 # Attendi la riga: "Started Application in X.XXX seconds"
 ```
+
+---
+
+## 🎯 Prossimi passi
+- Esplora i container Java e LAMP, prova a modificare il codice e vedere le differenze
+- Aggiungi un nuovo container (es. Python Flask) e collegalo alla rete
+- Integra un reverse proxy (es. Nginx) per esporre tutte le app su porte standard (80/443)
+- Completa l'[Esercizio C](esercizio_c.md)

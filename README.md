@@ -153,7 +153,33 @@ git commit -m "feat: add devcontainer configuration"
 Fatto. Quando apri questo repository in Codespaces (o in VS Code con l'estensione
 *Dev Containers*), ottieni un ambiente già pronto con Node 24 e Docker disponibili.
 
-## Parte 2: Analizzare un Dev Container esistente
+### Step 1.7: Crea il Codespace
+
+Ora vai su GitHub, apri il tuo repository e premi il pulsante **Code** (verde) →
+tab **Codespaces** → **Create codespace on main**.
+
+Attendi qualche minuto mentre GitHub costruisce il container. Al termine si aprirà
+VS Code nel browser con l'ambiente già configurato.
+
+**Complimenti! Hai completato la Parte 1 dell'esercitazione.**
+Hai ora un Codespace funzionante con Node.js disponibile e pronto all'uso.
+
+---
+
+## Parte 2: Utilizzare un Dev Container esistente (esercitaione alternativa alla Parte 1)
+
+> **Nota:** Non è necessario essere il proprietario di un repository per avviare un Codespace.
+> GitHub permette di creare un Codespace da **qualsiasi repository pubblico**, anche se appartiene
+> ad un altro utente. Il tuo Codespace è un ambiente personale e isolato: le modifiche che fai
+> non influenzano il repository originale.
+>
+> Il vantaggio di lavorare su un **proprio repository** (o su un fork) è che puoi fare il
+> **push delle modifiche** direttamente dal Codespace al repository remoto, salvando così il
+> tuo lavoro in modo permanente. Su un repository altrui, invece, non hai i permessi di scrittura
+> e le modifiche restano solo nel Codespace temporaneo.
+>
+> Per questo motivo, se vuoi conservare il tuo lavoro, è consigliabile fare un **fork** del
+> repository prima di aprire il Codespace.
 
 Apri il file `.devcontainer/devcontainer.json` del repository `cloud-computing-lab` e confrontalo con quello creato da zero:
 
@@ -198,12 +224,16 @@ node --version    # v24.x
 docker --version  # Docker 27.x
 ```
 
+**Complimenti! Hai completato la Parte 2 dell'esercitazione.**
+Anche in questo caso hai a disposizione un Codespace funzionante con Node.js pronto all'uso,
+questa volta utilizzando un Dev Container già configurato da un repository esistente.
+
 ---
 
 ## Parte 3: Creare e avviare la `nodejs-app`
 
 Una volta aperto il Codespace (o il Dev Container), crea una semplice app Node.js
-che gira **direttamente nell'ambiente**, senza Docker.
+che gira **direttamente nell'ambiente**.
 
 ### Step 3.1: Crea la cartella e inizializza il progetto
 
@@ -304,11 +334,23 @@ git commit -m "feat: add nodejs-app standalone"
 
 ## ✅ Verifica completamento Esercizio A
 
+**Parte 1 — Creare un Dev Container da zero**
 - [ ] Cartella `.devcontainer/` creata con `devcontainer.json` minimale
 - [ ] Features Node e Docker-in-Docker aggiunte
 - [ ] `postCreateCommand` e `forwardPorts` configurati
 - [ ] Commit effettuato con messaggio descrittivo
 - [ ] Codespace aperto e `node --version` / `docker --version` verificati
+
+**Parte 2 — Utilizzare un Dev Container esistente**
+- [ ] File `.devcontainer/devcontainer.json` del repository `cloud-computing-lab` aperto e analizzato
+- [ ] Codespace avviato dal repository esistente
+- [ ] `node --version` e `docker --version` verificati nel Codespace
+
+**Parte 3 — Creare e avviare la `nodejs-app`**
+- [ ] Cartella `nodejs-app/` creata e progetto inizializzato con `npm init`
+- [ ] File `index.js` creato con server HTTP
+- [ ] Script `start` aggiunto in `package.json`
+- [ ] App avviata con `npm start` e risposta verificata con `curl http://localhost:3000/`
 
 ---
 

@@ -1,4 +1,4 @@
-# 🛠️ Esercizio C: Crea il tuo Container Docker
+# 🛠️ Esercizio D: Crea il tuo Container Docker
 
 > **Prerequisito**: completare [Esercizio B](esercizio_b.md) (gestione container esistenti).
 
